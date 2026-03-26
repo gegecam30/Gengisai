@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>GENGIS AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+<style>
+:root {
+  --neon-purple: #b44aff;
+  --neon-cyan: #00f5ff;
+  --neon-lime: #aaff00;
+  --neon-pink: #ff0099;
+  --neon-orange: #ff6600;
+  --bg-dark: #080810;
+  --bg-card: #0d0d1a;
+  --bg-card2: #111122;
+  --border-color: #2a2a4a;
+  --text-primary: #e0e0ff;
+  --text-dim: #7070a0;
+  --shadow-purple: 0 0 20px rgba(180,74,255,0.4);
+  --shadow-cyan: 0 0 20px rgba(0,245,255,0.4);
+  --shadow-lime: 0 0 20px rgba(170,255,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* === SCANLINES OVERLAY === */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* === PIXEL FONT === */
+.pixel { font-family: 'Press Start 2P', cursive; }
+
+/* === GLITCH EFFECT === */
+@keyframes glitch {
+  0%,95%,100% { transform: translate(0); text-shadow: -2px 0 var(--neon-cyan), 2px 0 var(--neon-purple); }
+  96% { transform: translate(-4px, 1px); text-shadow: 4px 0 var(--neon-pink), -4px 0 var(--neon-lime); }
+  97% { transform: translate(4px, -1px); text-shadow: -3px 0 var(--neon-cyan), 3px 2px var(--neon-orange); }
+  98% { transform: translate(-2px, 2px) skewX(3deg); text-shadow: 6px 0 var(--neon-pink); }
+  99% { transform: translate(2px, -2px) skewX(-2deg); }
+}
+
+@keyframes float {
+  0%,100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes scanline-move {
+  0% { top: -100%; }
+  100% { top: 200%; }
+}
+
+@keyframes pulse-border {
+  0%,100% { box-shadow: 4px 4px 0 var(--neon-purple), 0 0 20px rgba(180,74,255,0.3); }
+  50% { box-shadow: 4px 4px 0 var(--neon-cyan), 0 0 30px rgba(0,245,255,0.5); }
+}
+
+@keyframes neon-flicker {
+  0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+  20%,22%,24%,55% { opacity: 0.6; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes modal-in {
+  from { transform: scale(0.5) rotate(-5deg); opacity: 0; }
+  to { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-8px) rotate(-1deg); }
+  40% { transform: translateX(8px) rotate(1deg); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+@keyframes rainbow-text {
+  0% { color: var(--neon-purple); }
+  25% { color: var(--neon-cyan); }
+  50% { color: var(--neon-lime); }
+  75% { color: var(--neon-pink); }
+  100% { color: var(--neon-purple); }
+}
+
+@keyframes star-twinkle {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.5); }
+}
+
+@keyframes card-flip {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  80% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* === PIXEL BUTTON === */
+.pixel-btn {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  padding: 10px 16px;
+  min-height: 44px;
+  min-width: 44px;
+  border: 3px solid;
+  cursor: pointer;
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.1s;
+  outline: none;
+  background: var(--bg-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.pixel-btn:active { transform: translate(3px, 3px); box-shadow: none !important; }
+
+.btn-purple {
+  color: var(--neon-purple);
+  border-color: var(--neon-purple);
+  box-shadow: 4px 4px 0 var(--neon-purple), 0 0 15px rgba(180,74,255,0.3);
+}
+.btn-purple:hover { background: rgba(180,74,255,0.15); box-shadow: 6px 6px 0 var(--neon-purple), 0 0 25px rgba(180,74,255,0.5); }
+
+.btn-cyan {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 4px 4px 0 var(--neon-cyan), 0 0 15px rgba(0,245,255,0.3);
+}
+.btn-cyan:hover { background: rgba(0,245,255,0.1); box-shadow: 6px 6px 0 var(--neon-cyan), 0 0 25px rgba(0,245,255,0.5); }
+
+.btn-lime {
+  color: var(--neon-lime);
+  border-color: var(--neon-lime);
+  box-shadow: 4px 4px 0 var(--neon-lime);
+}
+.btn-lime:hover { background: rgba(170,255,0,0.1); box-shadow: 6px 6px 0 var(--neon-lime), 0 0 25px rgba(170,255,0,0.4); }
+
+.btn-pink {
+  color: var(--neon-pink);
+  border-color: var(--neon-pink);
+  box-shadow: 4px 4px 0 var(--neon-pink);
+}
+.btn-pink:hover { background: rgba(255,0,153,0.1); }
+
+.btn-orange {
+  color: var(--neon-orange);
+  border-color: var(--neon-orange);
+  box-shadow: 4px 4px 0 var(--neon-orange);
+}
+
+/* === PIXEL CARD === */
+.pixel-card {
+  background: var(--bg-card);
+  border: 4px solid var(--border-color);
+  box-shadow: 4px 4px 0 rgba(180,74,255,0.3);
+  padding: 20px;
+  position: relative;
+}
+
+.pixel-card-cyan {
+  border-color: rgba(0,245,255,0.4);
+  box-shadow: 4px 4px 0 var(--neon-cyan), 0 0 20px rgba(0,245,255,0.1);
+}
+
+.pixel-card-purple {
+  border-color: rgba(180,74,255,0.4);
+  box-shadow: 4px 4px 0 var(--neon-purple), 0 0 20px rgba(180,74,255,0.1);
+}
+
+/* === LAYOUT === */
+#root { min-height: 100vh; }
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* === HEADER === */
+.header {
+  padding: 20px 12px 16px;
+  text-align: center;
+  border-bottom: 4px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  animation: scanline-move 3s linear infinite;
+}
+
+.header-title {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 28px;           /* mobile base */
+  color: var(--neon-cyan);
+  animation: glitch 4s infinite, float 3s ease-in-out infinite;
+  text-shadow: -3px 0 var(--neon-purple), 3px 0 var(--neon-lime);
+  letter-spacing: 3px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.header-sub {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 6px;
+  color: var(--neon-purple);
+  margin-top: 10px;
+  animation: neon-flicker 5s infinite;
+  letter-spacing: 2px;
+  word-break: break-all;
+}
+
+.header-tagline {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  letter-spacing: 1px;
+  line-height: 1.8;
+}
+
+/* tablet+ */
+@media (min-width: 480px) {
+  .header { padding: 26px 16px 18px; }
+  .header-title { font-size: 36px; letter-spacing: 4px; }
+  .header-sub { font-size: 7px; }
+  .header-tagline { font-size: 10px; }
+}
+
+/* desktop */
+@media (min-width: 768px) {
+  .header { padding: 34px 16px 22px; }
+  .header-title { font-size: 52px; }
+  .header-sub { font-size: 9px; }
+  .header-tagline { font-size: 11px; }
+}
+
+/* === MAIN MENU SCREEN === */
+.menu-screen {
+  min-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 10px 60px;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.menu-arrow-hint {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 7px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+@media (min-width: 480px) {
+  .menu-arrow-hint { font-size: 9px; margin-bottom: 24px; letter-spacing: 2px; }
+  .menu-screen { padding: 30px 16px 60px; }
+}
+
+.arrow-bounce {
+  display: inline-block;
+  animation: arrow-bounce 0.8s ease-in-out infinite;
+  color: var(--neon-lime);
+  font-size: 14px;
+}
+
+@keyframes arrow-bounce {
+  0%,100% { transform: translateY(0px); }
+  50% { transform: translateY(6px); }
+}
+
+.menu-item {
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: none;
+  outline: none;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.menu-item-inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  border: 4px solid var(--border-color);
+  border-top: 0;
+  background: var(--bg-card);
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  min-height: 80px;
+}
+
+.menu-item:first-of-type .menu-item-inner {
+  border-top: 4px solid var(--border-color);
+}
+
+@media (min-width: 480px) {
+  .menu-item-inner { gap: 20px; padding: 22px 28px; min-height: 90px; }
+}
+
+.menu-item-inner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  transition: left 0.4s ease;
+}
+
+.menu-item:hover .menu-item-inner::before,
+.menu-item:active .menu-item-inner::before {
+  left: 100%;
+}
+
+/* Per-item hover/active colors */
+.menu-item.item-casino:hover .menu-item-inner,
+.menu-item.item-casino:active .menu-item-inner {
+  border-color: var(--neon-lime);
+  background: rgba(170,255,0,0.06);
+  box-shadow: 4px 4px 0 var(--neon-lime), 0 0 30px rgba(170,255,0,0.2), inset 0 0 20px rgba(170,255,0,0.04);
+  transform: translateX(4px);
+}
+.menu-item.item-casino:hover .menu-label,
+.menu-item.item-casino:active .menu-label { color: var(--neon-lime); text-shadow: 0 0 16px rgba(170,255,0,0.8); }
+.menu-item.item-casino:hover .menu-arrow-sel,
+.menu-item.item-casino:active .menu-arrow-sel { color: var(--neon-lime); opacity: 1; }
+.menu-item.item-casino:hover .menu-icon,
+.menu-item.item-casino:active .menu-icon { filter: drop-shadow(0 0 8px rgba(170,255,0,0.9)); transform: scale(1.2); }
+
+.menu-item.item-anime:hover .menu-item-inner,
+.menu-item.item-anime:active .menu-item-inner {
+  border-color: var(--neon-pink);
+  background: rgba(255,0,153,0.06);
+  box-shadow: 4px 4px 0 var(--neon-pink), 0 0 30px rgba(255,0,153,0.2), inset 0 0 20px rgba(255,0,153,0.04);
+  transform: translateX(4px);
+}
+.menu-item.item-anime:hover .menu-label,
+.menu-item.item-anime:active .menu-label { color: var(--neon-pink); text-shadow: 0 0 16px rgba(255,0,153,0.8); }
+.menu-item.item-anime:hover .menu-arrow-sel,
+.menu-item.item-anime:active .menu-arrow-sel { color: var(--neon-pink); opacity: 1; }
+.menu-item.item-anime:hover .menu-icon,
+.menu-item.item-anime:active .menu-icon { filter: drop-shadow(0 0 8px rgba(255,0,153,0.9)); transform: scale(1.2); }
+
+.menu-item.item-calendar:hover .menu-item-inner,
+.menu-item.item-calendar:active .menu-item-inner {
+  border-color: var(--neon-cyan);
+  background: rgba(0,245,255,0.06);
+  box-shadow: 4px 4px 0 var(--neon-cyan), 0 0 30px rgba(0,245,255,0.2), inset 0 0 20px rgba(0,245,255,0.04);
+  transform: translateX(4px);
+}
+.menu-item.item-calendar:hover .menu-label,
+.menu-item.item-calendar:active .menu-label { color: var(--neon-cyan); text-shadow: 0 0 16px rgba(0,245,255,0.8); }
+.menu-item.item-calendar:hover .menu-arrow-sel,
+.menu-item.item-calendar:active .menu-arrow-sel { color: var(--neon-cyan); opacity: 1; }
+.menu-item.item-calendar:hover .menu-icon,
+.menu-item.item-calendar:active .menu-icon { filter: drop-shadow(0 0 8px rgba(0,245,255,0.9)); transform: scale(1.2); }
+
+.menu-item.item-iq:hover .menu-item-inner,
+.menu-item.item-iq:active .menu-item-inner {
+  border-color: var(--neon-purple);
+  background: rgba(180,74,255,0.06);
+  box-shadow: 4px 4px 0 var(--neon-purple), 0 0 30px rgba(180,74,255,0.2), inset 0 0 20px rgba(180,74,255,0.04);
+  transform: translateX(4px);
+}
+.menu-item.item-iq:hover .menu-label,
+.menu-item.item-iq:active .menu-label { color: var(--neon-purple); text-shadow: 0 0 16px rgba(180,74,255,0.8); }
+.menu-item.item-iq:hover .menu-arrow-sel,
+.menu-item.item-iq:active .menu-arrow-sel { color: var(--neon-purple); opacity: 1; }
+.menu-item.item-iq:hover .menu-icon,
+.menu-item.item-iq:active .menu-icon { filter: drop-shadow(0 0 8px rgba(180,74,255,0.9)); transform: scale(1.2); }
+
+.menu-arrow-sel {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  width: 18px;
+}
+@media (min-width: 480px) { .menu-arrow-sel { font-size: 16px; width: 24px; } }
+
+.menu-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  transition: transform 0.15s, filter 0.15s;
+}
+@media (min-width: 480px) { .menu-icon { font-size: 36px; } }
+
+.menu-label {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 14px;
+  color: var(--text-dim);
+  transition: color 0.15s, text-shadow 0.15s;
+  letter-spacing: 2px;
+  flex: 1;
+}
+@media (min-width: 480px) { .menu-label { font-size: 18px; letter-spacing: 3px; } }
+@media (min-width: 768px) { .menu-label { font-size: 24px; } }
+
+.menu-desc {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  letter-spacing: 0;
+  transition: color 0.15s;
+  font-family: 'Share Tech Mono', monospace;
+  line-height: 1.4;
+}
+@media (min-width: 480px) { .menu-desc { font-size: 11px; letter-spacing: 1px; } }
+
+.menu-item:hover .menu-desc,
+.menu-item:active .menu-desc { color: rgba(255,255,255,0.5); }
+
+.menu-shortcut {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 7px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  opacity: 0.4;
+  display: none;
+}
+@media (min-width: 480px) { .menu-shortcut { display: block; font-size: 8px; } }
+
+/* Back button */
+.back-btn {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  padding: 0 16px;
+  min-height: 44px;
+  border: 3px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s;
+  margin-bottom: 20px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.back-btn:hover, .back-btn:active {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 3px 3px 0 var(--neon-cyan);
+  transform: translateX(-3px);
+}
+
+/* Section enter animation */
+@keyframes section-enter {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.section-view { animation: section-enter 0.3s ease; }
+
+/* === SECTION === */
+.section { padding: 16px 12px; min-height: 60vh; }
+@media (min-width: 480px) { .section { padding: 24px 16px; } }
+@media (min-width: 768px) { .section { padding: 30px 16px; } }
+
+.section-title {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  line-height: 1.6;
+}
+@media (min-width: 480px) { .section-title { font-size: 16px; } }
+@media (min-width: 768px) { .section-title { font-size: 22px; } }
+
+/* === BLACKJACK === */
+.blackjack-table {
+  background: radial-gradient(ellipse at center, #0a1f0a 0%, #050f05 100%);
+  border: 4px solid var(--neon-lime);
+  box-shadow: 4px 4px 0 var(--neon-lime), 0 0 40px rgba(170,255,0,0.2), inset 0 0 60px rgba(0,0,0,0.5);
+  padding: 24px;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.blackjack-table::before {
+  content: '♠ GENGIS CASINO ♠';
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 7px;
+  color: rgba(170,255,0,0.4);
+  white-space: nowrap;
+  letter-spacing: 3px;
+}
+
+.playing-card {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 56px;
+  height: 80px;
+  background: #f0f0f0;
+  border: 3px solid #222;
+  box-shadow: 3px 3px 0 #000;
+  padding: 4px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  margin: 4px;
+  position: relative;
+  transition: transform 0.3s;
+}
+
+.playing-card:hover { transform: translateY(-4px); }
+
+.card-red { color: #cc0000; }
+.card-black { color: #111; }
+
+.card-hidden {
+  background: repeating-linear-gradient(
+    45deg,
+    #1a1a3a,
+    #1a1a3a 4px,
+    #2a2a5a 4px,
+    #2a2a5a 8px
+  );
+  border-color: var(--neon-purple);
+}
+
+.card-corner { font-size: 9px; line-height: 1; }
+.card-center { text-align: center; font-size: 20px; line-height: 1; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+.hand-area { min-height: 100px; display: flex; flex-wrap: wrap; align-items: center; }
+
+.score-badge {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 9px;
+  padding: 4px 8px;
+  border: 2px solid;
+  display: inline-block;
+  margin-left: 10px;
+}
+
+/* === SUBSCRIPTION SLIDE === */
+.subscription-panel {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 680px;
+  background: var(--bg-card);
+  border: 4px solid var(--neon-purple);
+  border-bottom: 0;
+  box-shadow: 0 -10px 50px rgba(180,74,255,0.55), 0 -2px 0 var(--neon-purple);
+  padding: 16px 14px 30px;
+  z-index: 1000;
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+@media (min-width: 480px) {
+  .subscription-panel { padding: 20px 20px 32px; }
+}
+
+.subscription-panel.closing {
+  animation: slide-down 0.4s ease-in forwards;
+}
+
+/* Plan cards: stacked column on mobile, row on tablet+ */
+.plan-cards-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (min-width: 480px) {
+  .plan-cards-row { flex-direction: row; gap: 12px; }
+}
+
+/* Troll close button — moves away on hover/touch */
+@keyframes troll-escape-1 {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  30%  { transform: translate(80px,-30px) rotate(15deg); }
+  60%  { transform: translate(-60px,40px) rotate(-10deg); }
+  100% { transform: translate(100px,-50px) rotate(20deg); }
+}
+@keyframes troll-escape-2 {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  40%  { transform: translate(-70px,-40px) rotate(-20deg); }
+  70%  { transform: translate(50px,60px) rotate(10deg); }
+  100% { transform: translate(-90px,30px) rotate(-15deg); }
+}
+@keyframes troll-escape-3 {
+  0%   { transform: translate(0,0) scale(1); }
+  25%  { transform: translate(40px,50px) scale(0.7) rotate(30deg); }
+  60%  { transform: translate(-80px,-20px) scale(1.3) rotate(-15deg); }
+  100% { transform: translate(60px,-60px) scale(0.5) rotate(45deg); }
+}
+@keyframes troll-label-change {
+  0%   { content: '✕ ESC'; }
+  33%  { content: '¡NO!'; }
+  66%  { content: '😈'; }
+  100% { content: '✕ ESC'; }
+}
+
+.troll-close-btn {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  padding: 0 12px;
+  min-height: 44px;
+  min-width: 72px;
+  border: 3px solid var(--neon-pink);
+  background: rgba(255,0,153,0.1);
+  color: var(--neon-pink);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--neon-pink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+/* On desktop hover — escape */
+@media (hover: hover) {
+  .troll-close-btn:hover {
+    animation: troll-escape-1 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  }
+  .troll-close-btn:hover::after {
+    content: '¡ATRÁPAME!';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 6px;
+    color: var(--neon-lime);
+    white-space: nowrap;
+  }
+}
+/* On mobile tap — vibrate and jump (can't hover so we do active trick) */
+.troll-close-btn:active,
+.troll-close-btn.escaping {
+  animation: troll-escape-3 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
+.plan-card {
+  border: 3px solid var(--border-color);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  min-width: 120px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.plan-card:hover, .plan-card:active {
+  transform: translateY(-4px);
+}
+
+.plan-basic { border-color: var(--text-dim); }
+.plan-basic:hover, .plan-basic:active { border-color: var(--neon-cyan); box-shadow: 0 4px 0 var(--neon-cyan); }
+
+.plan-warrior { border-color: var(--neon-purple); box-shadow: 0 4px 0 var(--neon-purple); }
+.plan-warrior:hover, .plan-warrior:active { box-shadow: 0 6px 0 var(--neon-purple), 0 0 20px rgba(180,74,255,0.4); }
+
+.plan-emperor { border-color: var(--neon-orange); box-shadow: 0 4px 0 var(--neon-orange); }
+.plan-emperor:hover, .plan-emperor:active { box-shadow: 0 6px 0 var(--neon-orange), 0 0 20px rgba(255,102,0,0.4); }
+
+.plan-price {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 13px;
+  margin: 8px 0;
+}
+@media (min-width: 480px) { .plan-price { font-size: 16px; } }
+
+/* === TROLL MODAL === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.troll-modal {
+  background: var(--bg-card);
+  border: 6px solid var(--neon-lime);
+  box-shadow: 8px 8px 0 var(--neon-lime), 0 0 60px rgba(170,255,0,0.5);
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  animation: modal-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.troll-emoji {
+  font-size: 72px;
+  animation: shake 0.5s ease-in-out infinite;
+  display: block;
+}
+
+.troll-text {
+  font-family: 'Press Start 2P', cursive;
+  font-size: clamp(10px, 2vw, 16px);
+  color: var(--neon-lime);
+  line-height: 1.8;
+  margin: 20px 0;
+  animation: rainbow-text 2s infinite;
+}
+
+/* === ANIME GALLERY === */
+.upload-zone {
+  border: 4px dashed var(--neon-purple);
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(180,74,255,0.03);
+  position: relative;
+}
+
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--neon-cyan);
+  background: rgba(0,245,255,0.06);
+  box-shadow: inset 0 0 30px rgba(0,245,255,0.1);
+}
+
+.upload-icon { font-size: 48px; margin-bottom: 12px; animation: float 2s ease-in-out infinite; }
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+@media (min-width: 480px) {
+  .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
+@media (min-width: 768px) {
+  .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .gallery-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.gallery-item {
+  border: 4px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 1;
+  background: var(--bg-card2);
+  transition: all 0.2s;
+}
+
+.gallery-item:hover { border-color: var(--neon-cyan); box-shadow: 4px 4px 0 var(--neon-cyan); transform: translate(-2px,-2px); }
+
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+
+.like-btn {
+  position: absolute;
+  bottom: 6px; right: 6px;
+  background: rgba(0,0,0,0.8);
+  border: 2px solid var(--neon-pink);
+  color: var(--neon-pink);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  padding: 0 10px;
+  min-height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  transition: all 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.like-btn:hover, .like-btn.liked { background: rgba(255,0,153,0.2); box-shadow: 0 0 10px rgba(255,0,153,0.5); }
+.like-btn:active { transform: scale(0.9); }
+
+.compress-badge {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 7px;
+  padding: 3px 6px;
+  border: 2px solid var(--neon-lime);
+  color: var(--neon-lime);
+  display: inline-block;
+  margin-top: 8px;
+}
+
+/* === CALENDAR === */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-header {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  text-align: center;
+  padding: 8px 4px;
+  color: var(--neon-purple);
+}
+
+.cal-day {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 9px;
+  padding: 8px 4px;
+  text-align: center;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  position: relative;
+}
+
+.cal-day:hover { border-color: var(--neon-cyan); background: rgba(0,245,255,0.05); }
+
+.cal-day.today {
+  background: rgba(0,245,255,0.15);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,245,255,0.4), inset 0 0 15px rgba(0,245,255,0.1);
+  color: var(--neon-cyan);
+  animation: pulse-border 2s infinite;
+}
+
+.cal-day.other-month { color: var(--text-dim); opacity: 0.4; }
+
+.event-dot {
+  width: 6px; height: 6px;
+  border-radius: 0;
+  margin: 1px;
+  display: inline-block;
+}
+
+.event-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 2px solid var(--neon-purple);
+  padding: 6px 8px;
+  font-size: 7px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 3px 3px 0 var(--neon-purple);
+  pointer-events: none;
+}
+
+/* === IQ TEST === */
+.question-card {
+  border: 4px solid var(--neon-purple);
+  padding: 24px;
+  margin-bottom: 16px;
+  background: var(--bg-card2);
+  box-shadow: 4px 4px 0 var(--neon-purple);
+  animation: bounce-in 0.4s ease;
+}
+
+.option-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 12px 14px;
+  min-height: 44px;
+  margin: 6px 0;
+  border: 3px solid var(--border-color);
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+@media (min-width: 480px) { .option-btn { font-size: 13px; } }
+
+.option-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0,245,255,0.05); transform: translateX(4px); }
+.option-btn.selected-wrong { border-color: var(--neon-pink); color: var(--neon-pink); background: rgba(255,0,153,0.1); }
+.option-btn.selected-right { border-color: var(--neon-lime); color: var(--neon-lime); background: rgba(170,255,0,0.1); }
+
+.iq-result {
+  text-align: center;
+  padding: 40px 20px;
+  border: 6px solid var(--neon-pink);
+  box-shadow: 8px 8px 0 var(--neon-pink), 0 0 50px rgba(255,0,153,0.4);
+  background: var(--bg-card2);
+  animation: modal-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.progress-bar {
+  height: 12px;
+  background: var(--bg-card2);
+  border: 3px solid var(--neon-purple);
+  margin: 12px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
+  transition: width 0.5s ease;
+}
+
+/* === STATUS BAR === */
+.status-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg-card);
+  border-top: 3px solid var(--border-color);
+  padding: 6px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  font-family: 'Press Start 2P', cursive;
+  color: var(--text-dim);
+  z-index: 500;
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  background: var(--neon-lime);
+  display: inline-block;
+  margin-right: 6px;
+  animation: star-twinkle 1s infinite;
+}
+
+/* === PIXEL ART DECORATIONS === */
+.pixel-stars {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  width: 2px; height: 2px;
+  background: white;
+  animation: star-twinkle var(--dur, 2s) infinite var(--delay, 0s);
+}
+
+/* === CHIP === */
+.chip {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  padding: 3px 8px;
+  border: 2px solid;
+  display: inline-block;
+}
+.chip-purple { color: var(--neon-purple); border-color: var(--neon-purple); }
+.chip-cyan { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+.chip-lime { color: var(--neon-lime); border-color: var(--neon-lime); }
+.chip-pink { color: var(--neon-pink); border-color: var(--neon-pink); }
+
+/* === LOADING === */
+.loading-dots::after {
+  content: '...';
+  animation: loading 1.5s infinite;
+}
+@keyframes loading {
+  0%,100% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+/* === PIXEL DIVIDER === */
+.pixel-divider {
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--neon-purple) 0, var(--neon-purple) 8px, transparent 8px, transparent 16px);
+  margin: 20px 0;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-card); }
+::-webkit-scrollbar-thumb { background: var(--neon-purple); border: 2px solid var(--bg-dark); }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-cyan); }
+
+/* === MOBILE-FIRST RESPONSIVE OVERRIDES === */
+
+/* Upload zone compact on mobile */
+.upload-zone { padding: 24px 16px; }
+@media (min-width: 480px) { .upload-zone { padding: 40px; } }
+
+/* Calendar compact on mobile */
+.cal-header { font-size: 6px; padding: 6px 2px; }
+@media (min-width: 380px) { .cal-header { font-size: 7px; } }
+@media (min-width: 480px) { .cal-header { font-size: 8px; padding: 8px 4px; } }
+
+.cal-day { font-size: 7px; padding: 6px 2px; min-height: 40px; }
+@media (min-width: 380px) { .cal-day { font-size: 8px; } }
+@media (min-width: 480px) { .cal-day { font-size: 9px; padding: 8px 4px; min-height: 50px; } }
+
+/* Blackjack responsive */
+.blackjack-table { padding: 16px 12px; }
+@media (min-width: 480px) { .blackjack-table { padding: 24px; } }
+
+.blackjack-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+.blackjack-controls .pixel-btn { flex: 1; min-width: 80px; font-size: 10px; }
+@media (min-width: 480px) { .blackjack-controls .pixel-btn { flex: unset; min-width: unset; } }
+
+/* Bet selector wraps on mobile */
+.bet-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 16px; }
+.bet-row .pixel-btn { font-size: 8px; padding: 0 10px; min-height: 44px; }
+
+/* Plan cards stack on mobile, row on desktop */
+.plan-cards-row { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 600px) { .plan-cards-row { flex-direction: row; } }
+
+/* Status bar smaller text on mobile */
+.status-bar { padding: 5px 10px; gap: 6px; }
+.status-bar-mid { display: none; }
+@media (min-width: 480px) { .status-bar-mid { display: block; } }
+
+/* Troll modal padding */
+.troll-modal { padding: 24px 16px; }
+@media (min-width: 480px) { .troll-modal { padding: 40px; } }
+
+/* IQ result padding */
+.iq-result { padding: 24px 16px; }
+@media (min-width: 480px) { .iq-result { padding: 40px 20px; } }
+
+/* App container */
+.app-container { max-width: 1200px; margin: 0 auto; padding: 0 10px; }
+@media (min-width: 480px) { .app-container { padding: 0 16px; } }
+
+/* Playing cards smaller on tiny screens */
+@media (max-width: 380px) {
+  .playing-card { width: 46px; height: 68px; font-size: 8px; margin: 3px; }
+  .card-center { font-size: 16px; }
+}
+
+/* Score badge inline */
+.score-badge { margin-left: 8px; }
+
+/* Pixel divider */
+.pixel-divider { margin: 14px 0; }
+@media (min-width: 480px) { .pixel-divider { margin: 20px 0; } }
+
+.fade-in { animation: bounce-in 0.4s ease; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// =============================================
+// FIREBASE CONFIG Y CONEXIÓN REAL (SIN IMPORTS)
+// =============================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB0BEHr3oE5UewazuQDzt6lulyv4tYxLR4",
+  authDomain: "gengisai.firebaseapp.com",
+  projectId: "gengisai",
+  storageBucket: "gengisai.firebasestorage.app", 
+  messagingSenderId: "927608604426",
+  appId: "1:927608604426:web:358e6b5317d6b4536b9cf3"
+};
+
+// Inicializamos Firebase de forma global
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+
+// =============================================
+// BASE DE DATOS REAL (Reemplaza al Mock falso)
+// =============================================
+const mockDb = {
+  async checkPlayedToday(ip) {
+    const today = new Date().toISOString().split('T')[0];
+    const docRef = db.collection("plays").doc(`${ip}_${today}`);
+    const docSnap = await docRef.get();
+    return docSnap.exists;
+  },
+  async recordPlay(ip) {
+    const today = new Date().toISOString().split('T')[0];
+    const docRef = db.collection("plays").doc(`${ip}_${today}`);
+    await docRef.set({ played: true, fecha: new Date() });
+  },
+  async toggleLike(imageId, ip) {
+    const docRef = db.collection("likes").doc(`${imageId}_${ip}`);
+    const docSnap = await docRef.get();
+    let isLiked = false;
+    
+    if (docSnap.exists) {
+      isLiked = !docSnap.data().liked;
+    } else {
+      isLiked = true;
+    }
+    
+    await docRef.set({ liked: isLiked });
+    return isLiked;
+  },
+  async isLiked(imageId, ip) {
+    const docRef = db.collection("likes").doc(`${imageId}_${ip}`);
+    const docSnap = await docRef.get();
+    return docSnap.exists ? docSnap.data().liked : false;
+  }
+};
+
+// (Deja tu función compressImage y getUserIP exactamente como estaban)
+
+// =============================================
+// IMAGE COMPRESSION (Se queda igual, funciona perfecto)
+// =============================================
+async function compressImage(file, maxSizeKB = 200) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        let quality = 0.9;
+        const maxDim = 1200;
+
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const tryCompress = () => {
+          const dataURL = canvas.toDataURL('image/jpeg', quality);
+          const sizeKB = Math.round((dataURL.length * 0.75) / 1024);
+          if (sizeKB > maxSizeKB && quality > 0.1) {
+            quality -= 0.1;
+            tryCompress();
+          } else {
+            resolve({ dataURL, sizeKB, width, height, originalKB: Math.round(file.size / 1024) });
+          }
+        };
+        tryCompress();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+// =============================================
+// IP FETCH
+// =============================================
+async function getUserIP() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const { ip } = await res.json();
+    return ip;
+  } catch {
+    return 'anonymous_' + Math.random().toString(36).substr(2, 9);
+  }
+}
+
+// =============================================
+// CARD DECK UTILS
+// =============================================
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+function createDeck() {
+  const deck = [];
+  for (const suit of SUITS) for (const rank of RANKS) deck.push({ suit, rank });
+  return deck.sort(() => Math.random() - 0.5);
+}
+
+function cardValue(rank) {
+  if (['J','Q','K'].includes(rank)) return 10;
+  if (rank === 'A') return 11;
+  return parseInt(rank);
+}
+
+function handValue(hand) {
+  let val = hand.reduce((s, c) => s + cardValue(c.rank), 0);
+  let aces = hand.filter(c => c.rank === 'A').length;
+  while (val > 21 && aces > 0) { val -= 10; aces--; }
+  return val;
+}
+
+const isRed = (suit) => suit === '♥' || suit === '♦';
+
+// =============================================
+// PIXEL STARS BACKGROUND
+// =============================================
+function PixelStars() {
+  const stars = Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    dur: (1 + Math.random() * 3).toFixed(1) + 's',
+    delay: (Math.random() * 3).toFixed(1) + 's',
+  }));
+
+  return (
+    <div className="pixel-stars">
+      {stars.map(s => (
+        <div key={s.id} className="star" style={{
+          left: s.x + '%', top: s.y + '%',
+          '--dur': s.dur, '--delay': s.delay
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// =============================================
+// PLAYING CARD COMPONENT
+// =============================================
+function PlayingCard({ card, hidden = false }) {
+  if (hidden) {
+    return (
+      <div className="playing-card card-hidden" style={{ width: 56, height: 80 }}>
+        <div style={{ fontSize: 20, textAlign: 'center', marginTop: 20, color: 'var(--neon-purple)' }}>?</div>
+      </div>
+    );
+  }
+  const red = isRed(card.suit);
+  return (
+    <div className={`playing-card ${red ? 'card-red' : 'card-black'}`}>
+      <div className="card-corner">{card.rank}<br/>{card.suit}</div>
+      <div className="card-center">{card.suit}</div>
+      <div className="card-corner" style={{ alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>{card.rank}<br/>{card.suit}</div>
+    </div>
+  );
+}
+
+// =============================================
+// BLACKJACK SECTION
+// =============================================
+function BlackjackSection({ userIP }) {
+  const [deck, setDeck] = useState([]);
+  const [playerHand, setPlayerHand] = useState([]);
+  const [dealerHand, setDealerHand] = useState([]);
+  const [gameState, setGameState] = useState('idle'); // idle | playing | dealer | over
+  const [message, setMessage] = useState('');
+  const [balance, setBalance] = useState(1000);
+  const [bet, setBet] = useState(50);
+  const [showSub, setShowSub] = useState(false);
+  const [subClosing, setSubClosing] = useState(false);
+  const [showTroll, setShowTroll] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [checkingIP, setCheckingIP] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (userIP) {
+        const played = await mockDb.checkPlayedToday(userIP);
+        setHasPlayed(played);
+        setCheckingIP(false);
+      }
+    })();
+  }, [userIP]);
+
+  const deal = async () => {
+    if (hasPlayed) {
+      setShowSub(true);
+      return;
+    }
+    if (balance < bet) return;
+    const d = createDeck();
+    const pHand = [d[0], d[2]];
+    const dHand = [d[1], d[3]];
+    setDeck(d.slice(4));
+    setPlayerHand(pHand);
+    setDealerHand(dHand);
+    setGameState('playing');
+    setMessage('');
+    setBalance(b => b - bet);
+  };
+
+  const hit = () => {
+    if (gameState !== 'playing') return;
+    const newDeck = [...deck];
+    const card = newDeck.shift();
+    const newHand = [...playerHand, card];
+    setPlayerHand(newHand);
+    setDeck(newDeck);
+    if (handValue(newHand) > 21) {
+      endGame('bust', newHand, dealerHand);
+    }
+  };
+
+  const stand = async () => {
+    if (gameState !== 'playing') return;
+    setGameState('dealer');
+    let dHand = [...dealerHand];
+    let d = [...deck];
+    while (handValue(dHand) < 17) {
+      dHand.push(d.shift());
+    }
+    setDealerHand(dHand);
+    setDeck(d);
+    setTimeout(() => endGame('stand', playerHand, dHand), 600);
+  };
+
+  const endGame = async (reason, pHand, dHand) => {
+    const pVal = handValue(pHand);
+    const dVal = handValue(dHand);
+    let msg, win = false;
+
+    if (reason === 'bust') { msg = '💀 TE PASASTE! Bust!'; }
+    else if (dVal > 21) { msg = '🎉 DEALER BUST! ¡Ganaste!'; win = true; }
+    else if (pVal > dVal) { msg = '🏆 ¡GANASTE! Eres el próximo Gengis!'; win = true; }
+    else if (pVal === dVal) { msg = '🤝 EMPATE - Push'; setBalance(b => b + bet); }
+    else { msg = '😈 DEALER WINS. Ez clap.'; }
+
+    if (win) setBalance(b => b + bet * 2);
+    setMessage(msg);
+    setGameState('over');
+    await mockDb.recordPlay(userIP);
+    setHasPlayed(true);
+  };
+
+  const closeSub = () => {
+    setSubClosing(true);
+    setTimeout(() => { setShowSub(false); setSubClosing(false); }, 400);
+  };
+
+  const handleBuy = () => {
+    closeSub();
+    setTimeout(() => setShowTroll(true), 500);
+  };
+
+  const pScore = playerHand.length ? handValue(playerHand) : 0;
+  const dScore = dealerHand.length ? (gameState === 'playing' ? cardValue(dealerHand[0].rank) : handValue(dealerHand)) : 0;
+
+  if (checkingIP) {
+    return (
+      <div style={{ textAlign: 'center', padding: 60, color: 'var(--neon-cyan)' }}>
+        <div className="pixel" style={{ fontSize: 11 }}>VERIFICANDO IDENTIDAD<span className="loading-dots"></span></div>
+        <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-dim)' }}>Consultando registros del Imperio...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="section-title pixel" style={{ color: 'var(--neon-lime)' }}>
+        <span>♠</span> THE TROLL LOOP CASINO <span>♠</span>
+      </div>
+
+      {hasPlayed && gameState === 'idle' && (
+        <div className="pixel-card pixel-card-cyan" style={{ marginBottom: 20, textAlign: 'center' }}>
+          <div className="pixel" style={{ fontSize: 9, color: 'var(--neon-cyan)', marginBottom: 8 }}>⚠ LÍMITE DIARIO ALCANZADO</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Ya jugaste tu partida gratis de hoy. ¿Quieres más? Hay planes disponibles... 😈</div>
+        </div>
+      )}
+
+      {/* Balance + bet */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        <div className="pixel-card" style={{ padding: '10px 16px', display: 'inline-flex', gap: 8, alignItems: 'center', alignSelf: 'flex-start' }}>
+          <span style={{ color: 'var(--neon-lime)', fontSize: 11 }}>💰</span>
+          <span className="pixel" style={{ fontSize: 10, color: 'var(--neon-lime)' }}>${balance}</span>
+        </div>
+        <div className="bet-row">
+          <span className="pixel" style={{ fontSize: 8, color: 'var(--text-dim)', marginRight: 2 }}>BET:</span>
+          {[25, 50, 100, 200].map(b => (
+            <button key={b} onClick={() => setBet(b)} className={`pixel-btn ${bet === b ? 'btn-lime' : 'btn-purple'}`} style={{ fontSize: 9 }}>
+              ${b}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="blackjack-table">
+        {/* Dealer */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span className="pixel" style={{ fontSize: 9, color: 'var(--neon-lime)' }}>DEALER</span>
+            {dealerHand.length > 0 && <span className="score-badge" style={{ borderColor: 'var(--neon-orange)', color: 'var(--neon-orange)' }}>{dScore}</span>}
+          </div>
+          <div className="hand-area">
+            {gameState === 'idle' ? (
+              <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>Esperando partida...</div>
+            ) : dealerHand.map((card, i) => (
+              <PlayingCard key={i} card={card} hidden={i === 1 && gameState === 'playing'} />
+            ))}
+          </div>
+        </div>
+
+        <div className="pixel-divider" />
+
+        {/* Player */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span className="pixel" style={{ fontSize: 9, color: 'var(--neon-cyan)' }}>JUGADOR</span>
+            {playerHand.length > 0 && <span className="score-badge" style={{ borderColor: 'var(--neon-cyan)', color: 'var(--neon-cyan)' }}>{pScore}</span>}
+          </div>
+          <div className="hand-area">
+            {gameState === 'idle' ? (
+              <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>Presiona DEAL para jugar</div>
+            ) : playerHand.map((card, i) => <PlayingCard key={i} card={card} />)}
+          </div>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div style={{ textAlign: 'center', padding: '16px', marginTop: 16 }}>
+            <div className="pixel" style={{ fontSize: clamp(10, 14), color: message.includes('Ganaste') || message.includes('GANASTE') ? 'var(--neon-lime)' : message.includes('EMPATE') ? 'var(--neon-cyan)' : 'var(--neon-pink)' }}>
+              {message}
+            </div>
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="blackjack-controls" style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {(gameState === 'idle' || gameState === 'over') && (
+            <button onClick={deal} className="pixel-btn btn-lime" style={{ fontSize: 11, padding: '12px 24px' }}>
+              🃏 DEAL
+            </button>
+          )}
+          {gameState === 'playing' && (
+            <>
+              <button onClick={hit} className="pixel-btn btn-cyan" style={{ fontSize: 11 }}>HIT +</button>
+              <button onClick={stand} className="pixel-btn btn-orange" style={{ fontSize: 11 }}>STAND ✋</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Rules */}
+      <div style={{ marginTop: 16, fontSize: 10, color: 'var(--text-dim)', padding: '0 4px' }}>
+        <span style={{ color: 'var(--neon-pink)' }}>⚠</span> SOLO 1 PARTIDA DIARIA GRATIS • Basado en IP • Casa siempre gana (o sea, nosotros)
+      </div>
+
+      {/* Subscription Panel */}
+      {showSub && (
+        <div className={`subscription-panel ${subClosing ? 'closing' : ''}`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, position: 'relative' }}>
+            <div className="pixel" style={{ fontSize: 9, color: 'var(--neon-purple)' }}>
+              💎 PLANES
+            </div>
+            <TrollCloseBtn onClose={closeSub} />
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.6 }}>
+            ¿Ya gastaste tu intento diario? ¡Invierte en el Imperio de Gengis!
+          </div>
+          <div className="plan-cards-row">
+            {[
+              { name: 'GENGIS BASIC', price: '$9.99', color: 'var(--text-dim)', cls: 'plan-basic', perks: ['3 partidas/día', 'Carrier pigeon support', 'Foro del s. XII'] },
+              { name: 'WARRIOR VIP', price: '$29.99', color: 'var(--neon-purple)', cls: 'plan-warrior', perks: ['10 partidas/día', 'Caballo virtual', '⭐ POPULAR'] },
+              { name: 'EMPEROR', price: '$99.99', color: 'var(--neon-orange)', cls: 'plan-emperor', perks: ['∞ partidas', 'Llamada con Gengis', '👑 ELITE'] },
+            ].map(plan => (
+              <div key={plan.name} className={`plan-card ${plan.cls}`} onClick={handleBuy}>
+                <div className="pixel" style={{ fontSize: 7, color: plan.color, marginBottom: 8 }}>{plan.name}</div>
+                <div className="plan-price" style={{ color: plan.color }}>{plan.price}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>/mes</div>
+                <div className="pixel-divider" style={{ margin: '8px 0' }} />
+                {plan.perks.map(p => <div key={p} style={{ fontSize: 8, color: 'var(--text-primary)', marginBottom: 3 }}>▶ {p}</div>)}
+                <button className={`pixel-btn ${plan.cls === 'plan-emperor' ? 'btn-orange' : plan.cls === 'plan-warrior' ? 'btn-purple' : 'btn-cyan'}`} style={{ marginTop: 10, width: '100%', fontSize: 8 }}>
+                  COMPRAR
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Troll Modal */}
+      {showTroll && (
+        <div className="modal-overlay" onClick={() => setShowTroll(false)}>
+          <div className="troll-modal" onClick={e => e.stopPropagation()}>
+            <span className="troll-emoji">🤣</span>
+            <div className="troll-text">
+              ¿ES EN SERIO?
+            </div>
+            <div className="troll-text" style={{ fontSize: 'clamp(8px,1.5vw,13px)', color: 'var(--neon-pink)' }}>
+              ¡¡¡AJAJAJAJAJAJA!!!
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', margin: '16px 0', lineHeight: 2 }}>
+              ¿De verdad ibas a pagar <span style={{ color: 'var(--neon-lime)' }}>$99.99</span> para jugar más Blackjack? 😂<br/>
+              <span style={{ color: 'var(--neon-cyan)' }}>¡TROLLEADO! 🎭</span>
+            </div>
+            <div className="pixel" style={{ fontSize: 8, color: 'var(--text-dim)', marginBottom: 20 }}>
+              No existe forma de pagar. Todo es un chiste. Welcome to Gengis AI.
+            </div>
+            <button onClick={() => setShowTroll(false)} className="pixel-btn btn-lime" style={{ fontSize: 10 }}>
+              😭 OK ME TROLLEARON GG
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// helper
+function clamp(a, b) { return b; }
+
+// =============================================
+// TROLL CLOSE BUTTON — escapes cursor/tap
+// =============================================
+function TrollCloseBtn({ onClose }) {
+  const [escaped, setEscaped] = useState(false);
+  const [label, setLabel] = useState('✕ ESC');
+  const [tryCount, setTryCount] = useState(0);
+  const btnRef = useRef(null);
+
+  const escape = (e) => {
+    e.stopPropagation();
+    const count = tryCount + 1;
+    setTryCount(count);
+    // After 4 failed attempts, let them close it (troll complete)
+    if (count >= 4) { onClose(); return; }
+    const labels = ['¡NO!', '😈 NUNCA', '¡PAGA!', '🏃 BYE'];
+    setLabel(labels[(count - 1) % labels.length]);
+    setEscaped(true);
+    setTimeout(() => setEscaped(false), 600);
+  };
+
+  return (
+    <button
+      ref={btnRef}
+      onClick={escape}
+      className={`troll-close-btn${escaped ? ' escaping' : ''}`}
+      style={{ fontSize: tryCount >= 3 ? 7 : 8 }}
+    >
+      {label}
+      {tryCount > 0 && tryCount < 4 && (
+        <span style={{ position: 'absolute', top: -18, right: 0, fontSize: 6, color: 'var(--neon-lime)', fontFamily: 'Press Start 2P', whiteSpace: 'nowrap' }}>
+          {4 - tryCount} int. restantes
+        </span>
+      )}
+    </button>
+  );
+}
+
+// =============================================
+// ANIME SECTION
+// =============================================
+function AnimeSection({ userIP }) {
+  const [images, setImages] = useState(() => {
+    const saved = localStorage.getItem('gengis_anime');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [lastCompress, setLastCompress] = useState(null);
+  const fileRef = useRef();
+
+  const saveImages = (imgs) => {
+    localStorage.setItem('gengis_anime', JSON.stringify(imgs));
+    setImages(imgs);
+  };
+
+  const processFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    setUploading(true);
+    try {
+      const { dataURL, sizeKB, originalKB, width, height } = await compressImage(file, 200);
+      setLastCompress({ originalKB, sizeKB, width, height });
+      const newImg = {
+        id: Date.now().toString(),
+        url: dataURL,
+        name: file.name,
+        sizeKB,
+        originalKB,
+        likes: 0,
+        likedBy: [],
+        uploadedAt: new Date().toISOString(),
+      };
+      const updated = [newImg, ...images];
+      saveImages(updated);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    await processFile(file);
+  };
+
+  const toggleLike = async (id) => {
+    const updated = images.map(img => {
+      if (img.id !== id) return img;
+      const likedBy = img.likedBy || [];
+      const alreadyLiked = likedBy.includes(userIP);
+      return {
+        ...img,
+        likes: alreadyLiked ? img.likes - 1 : img.likes + 1,
+        likedBy: alreadyLiked ? likedBy.filter(x => x !== userIP) : [...likedBy, userIP],
+      };
+    });
+    saveImages(updated);
+  };
+
+  const deleteImage = (id) => {
+    saveImages(images.filter(i => i.id !== id));
+  };
+
+  return (
+    <div>
+      <div className="section-title pixel" style={{ color: 'var(--neon-pink)' }}>
+        <span>🌸</span> ANIME VAULT <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>// Galería Pixelada</span>
+      </div>
+
+      {/* Upload Zone */}
+      <div
+        className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileRef.current?.click()}
+      >
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => processFile(e.target.files[0])} />
+        <div className="upload-icon">{uploading ? '⚙️' : '📁'}</div>
+        <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 8 }}>
+          {uploading ? 'COMPRIMIENDO...' : 'DRAG & DROP / CLICK'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+          Sube tu waifu/husbando. Compresión automática a &lt;200KB via Canvas API
+        </div>
+        {lastCompress && (
+          <div style={{ marginTop: 12 }}>
+            <span className="compress-badge">
+              {lastCompress.originalKB}KB → {lastCompress.sizeKB}KB ({lastCompress.width}×{lastCompress.height}px)
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Gallery */}
+      {images.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🖼️</div>
+          <div className="pixel" style={{ fontSize: 9 }}>GALERÍA VACÍA</div>
+          <div style={{ fontSize: 11, marginTop: 8 }}>Sube tus primeras imágenes arriba</div>
+        </div>
+      ) : (
+        <div className="gallery-grid">
+          {images.map(img => {
+            const liked = (img.likedBy || []).includes(userIP);
+            return (
+              <div key={img.id} className="gallery-item fade-in">
+                <img src={img.url} alt={img.name} />
+                <div className="like-btn" onClick={() => toggleLike(img.id)}>
+                  <span style={{ animation: liked ? 'bounce-in 0.3s ease' : 'none' }}>{liked ? '❤️' : '🤍'}</span>
+                  <span>{img.likes}</span>
+                </div>
+                <button
+                  onClick={() => deleteImage(img.id)}
+                  style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.8)', border: '2px solid var(--neon-pink)', color: 'var(--neon-pink)', cursor: 'pointer', fontSize: 10, padding: '2px 6px', fontFamily: 'Press Start 2P' }}
+                >✕</button>
+                <div style={{ position: 'absolute', bottom: 6, left: 6, background: 'rgba(0,0,0,0.8)', border: '2px solid var(--neon-lime)', color: 'var(--neon-lime)', fontSize: 7, padding: '2px 5px', fontFamily: 'Press Start 2P' }}>
+                  {img.sizeKB}KB
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================
+// CALENDAR SECTION
+// =============================================
+const ABSURD_EVENTS = {
+  3: '🎮 Torneo Pong vs Gengis',
+  7: '🍜 Día de la Ramen Sagrada',
+  11: '🐉 Atacar dragón imaginario',
+  14: '💘 San Valentín de Pixels',
+  16: '🚀 Lanzar cohete de papel',
+  19: '🎲 Ruleta rusa con dados',
+  21: '🦆 Quack Quack Protocol',
+  25: '👾 Invasión alien en el baño',
+  28: '🎪 Circo del fin del mundo',
+};
+
+const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function CalendarSection() {
+  const today = new Date();
+  const [current, setCurrent] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  const [hoveredEvent, setHoveredEvent] = useState(null);
+
+  const firstDay = new Date(current.year, current.month, 1).getDay();
+  const daysInMonth = new Date(current.year, current.month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(current.year, current.month, 0).getDate();
+
+  const cells = [];
+  for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: daysInPrevMonth - i, other: true });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, other: false });
+  while (cells.length < 42) cells.push({ day: cells.length - daysInMonth - firstDay + 1, other: true });
+
+  const prevMonth = () => setCurrent(c => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 });
+  const nextMonth = () => setCurrent(c => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 });
+
+  return (
+    <div>
+      <div className="section-title pixel" style={{ color: 'var(--neon-cyan)' }}>
+        <span>📅</span> CALENDARIO DEL CAOS
+      </div>
+
+      {/* Month nav */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <button onClick={prevMonth} className="pixel-btn btn-purple" style={{ padding: '8px 16px', fontSize: 10 }}>◀</button>
+        <div className="pixel" style={{ fontSize: clamp(11, 14), color: 'var(--neon-cyan)' }}>
+          {MONTHS_ES[current.month]} {current.year}
+        </div>
+        <button onClick={nextMonth} className="pixel-btn btn-purple" style={{ padding: '8px 16px', fontSize: 10 }}>▶</button>
+      </div>
+
+      <div className="pixel-card pixel-card-cyan">
+        {/* Headers */}
+        <div className="calendar-grid">
+          {DAYS_ES.map(d => (
+            <div key={d} className="cal-header">{d}</div>
+          ))}
+
+          {/* Days */}
+          {cells.map((cell, i) => {
+            const isToday = !cell.other && cell.day === today.getDate() && current.month === today.getMonth() && current.year === today.getFullYear();
+            const event = !cell.other ? ABSURD_EVENTS[cell.day] : null;
+
+            return (
+              <div
+                key={i}
+                className={`cal-day ${isToday ? 'today' : ''} ${cell.other ? 'other-month' : ''}`}
+                onMouseEnter={() => event && setHoveredEvent(i)}
+                onMouseLeave={() => setHoveredEvent(null)}
+                style={{ position: 'relative' }}
+              >
+                <span>{cell.day}</span>
+                {event && (
+                  <div className="event-dot" style={{ background: isToday ? 'var(--neon-lime)' : 'var(--neon-pink)' }} />
+                )}
+                {hoveredEvent === i && event && (
+                  <div className="event-tooltip">{event}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ marginTop: 16, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
+          <div style={{ width: 8, height: 8, background: 'var(--neon-cyan)', border: '2px solid var(--neon-cyan)' }} />
+          Hoy
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
+          <div style={{ width: 8, height: 8, background: 'var(--neon-pink)' }} />
+          Evento absurdo (hover para ver)
+        </div>
+      </div>
+
+      {/* Upcoming */}
+      <div style={{ marginTop: 20 }}>
+        <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 12 }}>PRÓXIMOS EVENTOS:</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Object.entries(ABSURD_EVENTS).slice(0, 4).map(([day, event]) => (
+            <div key={day} className="pixel-card" style={{ padding: '10px 14px', display: 'flex', gap: 12, alignItems: 'center', borderColor: 'rgba(180,74,255,0.3)' }}>
+              <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', minWidth: 24 }}>{day}</div>
+              <div style={{ fontSize: 11 }}>{event}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+// IQ TEST (TONTO-METER)
+// =============================================
+const IQ_QUESTIONS = [
+  {
+    q: '¿Cuántas veces puedes restar 5 de 25?',
+    options: ['5 veces', '1 vez', '20 veces', 'Infinitas'],
+    hint: 'Después de la primera resta ya no es 25...',
+  },
+  {
+    q: 'Un gallo pone un huevo en el techo. ¿Hacia dónde cae?',
+    options: ['Al sur', 'Al norte', 'Los gallos no ponen huevos', 'Al este'],
+    hint: 'Los gallos son machos...',
+  },
+  {
+    q: 'Tienes 3 manzanas y tomas 2. ¿Cuántas tienes?',
+    options: ['1', '5', '2', '3'],
+    hint: 'TÚ las tomaste...',
+  },
+  {
+    q: 'Un hombre vive en el piso 30. Sube por las escaleras hasta el 15 y toma el ascensor. ¿Por qué?',
+    options: ['Le da pereza', 'No le gustan los ascensores', 'Es demasiado bajo para llegar al 30', 'El ascensor está roto'],
+    hint: '¿Por qué no usaría el ascensor desde abajo?',
+  },
+  {
+    q: '¿Qué siempre está delante de ti pero no se puede ver?',
+    options: ['La pared', 'El futuro', 'La nariz', 'La oscuridad'],
+    hint: 'Piensa filosóficamente...',
+  },
+];
+
+// All "wrong" for the troll (correct answers: 1, 2, 2, 2, 1)
+const CORRECT = [1, 2, 2, 2, 1];
+
+function IQSection() {
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [animating, setAnimating] = useState(false);
+
+  const handleAnswer = (idx) => {
+    if (selected !== null || animating) return;
+    setSelected(idx);
+    setAnimating(true);
+
+    setTimeout(() => {
+      const newAnswers = [...answers, idx];
+      setAnswers(newAnswers);
+      if (current < IQ_QUESTIONS.length - 1) {
+        setCurrent(c => c + 1);
+        setSelected(null);
+        setAnimating(false);
+      } else {
+        setShowResult(true);
+        setAnimating(false);
+      }
+    }, 900);
+  };
+
+  const reset = () => {
+    setCurrent(0);
+    setAnswers([]);
+    setSelected(null);
+    setShowResult(false);
+  };
+
+  const score = answers.filter((a, i) => a === CORRECT[i]).length;
+  const progress = ((current + (selected !== null ? 1 : 0)) / IQ_QUESTIONS.length) * 100;
+
+  if (showResult) {
+    return (
+      <div>
+        <div className="section-title pixel" style={{ color: 'var(--neon-pink)' }}>
+          <span>🧠</span> TONTO-METER™
+        </div>
+        <div className="iq-result">
+          <div style={{ fontSize: 72, marginBottom: 16, animation: 'shake 0.4s infinite' }}>🤡</div>
+          <div className="pixel" style={{ fontSize: clamp(12, 18), color: 'var(--neon-pink)', marginBottom: 12 }}>RESULTADO OFICIAL</div>
+          <div className="pixel" style={{ fontSize: clamp(10, 14), color: 'var(--neon-lime)', marginBottom: 20, lineHeight: 2 }}>
+            NIVEL DE ESTUPIDEZ: CRÍTICO
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
+            Acertaste {score} de {IQ_QUESTIONS.length} preguntas.
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 24, lineHeight: 1.8 }}>
+            El algoritmo cuántico de Gengis AI ha procesado tus respuestas y determinado que tu coeficiente intelectual es equivalente al de una papa cocida en un universo alternativo donde las papas tienen consciencia.
+          </div>
+          <div className="pixel" style={{ fontSize: 9, color: 'var(--neon-cyan)', marginBottom: 20 }}>
+            IQ CALCULADO: {Math.floor(Math.random() * 20) + 40} pts 📊
+          </div>
+          <button onClick={reset} className="pixel-btn btn-purple">🔄 REINTENTAR (spoiler: mismo resultado)</button>
+        </div>
+      </div>
+    );
+  }
+
+  const q = IQ_QUESTIONS[current];
+
+  return (
+    <div>
+      <div className="section-title pixel" style={{ color: 'var(--neon-pink)' }}>
+        <span>🧠</span> TONTO-METER™ <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>// IQ Test Oficial de Gengis</span>
+      </div>
+
+      {/* Progress */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span className="pixel" style={{ fontSize: 8, color: 'var(--text-dim)' }}>PREGUNTA {current + 1}/{IQ_QUESTIONS.length}</span>
+          <span className="pixel" style={{ fontSize: 8, color: 'var(--neon-purple)' }}>{Math.round(progress)}%</span>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: progress + '%' }} />
+        </div>
+      </div>
+
+      {/* Question */}
+      <div className="question-card" key={current}>
+        <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 16, lineHeight: 1.8 }}>
+          {q.q}
+        </div>
+        <div>
+          {q.options.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => handleAnswer(i)}
+              className={`option-btn ${
+                selected === i
+                  ? i === CORRECT[current]
+                    ? 'selected-right'
+                    : 'selected-wrong'
+                  : selected !== null && i === CORRECT[current]
+                    ? 'selected-right'
+                    : ''
+              }`}
+            >
+              {['A', 'B', 'C', 'D'][i]}{')'} {opt}
+            </button>
+          ))}
+        </div>
+        {selected !== null && (
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--neon-cyan)', fontStyle: 'italic' }}>
+            💡 Pista: {q.hint}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+// MAIN MENU SCREEN
+// =============================================
+function MainMenu({ onSelect }) {
+  const menuItems = [
+    {
+      id: 'casino',
+      cls: 'item-casino',
+      icon: '🎰',
+      label: 'CASINO',
+      desc: 'Blackjack · 1 partida diaria · El troll te espera',
+      shortcut: '[1]',
+    },
+    {
+      id: 'anime',
+      cls: 'item-anime',
+      icon: '🌸',
+      label: 'ANIME',
+      desc: 'Galería pixelada · Upload + compress · Likes',
+      shortcut: '[2]',
+    },
+    {
+      id: 'calendar',
+      cls: 'item-calendar',
+      icon: '📅',
+      label: 'DIA',
+      desc: 'Calendario del caos · Eventos absurdos',
+      shortcut: '[3]',
+    },
+    {
+      id: 'iq',
+      cls: 'item-iq',
+      icon: '🧠',
+      label: 'IQ TEST',
+      desc: 'Tonto-meter™ · Resultado: siempre crítico',
+      shortcut: '[4]',
+    },
+  ];
+
+  // Keyboard nav
+  useEffect(() => {
+    const map = { '1': 'casino', '2': 'anime', '3': 'calendar', '4': 'iq' };
+    const handler = (e) => { if (map[e.key]) onSelect(map[e.key]); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <div className="menu-screen">
+      <div className="menu-arrow-hint">
+        <span className="arrow-bounce">▼</span>
+        SELECCIONA UN MÓDULO
+        <span className="arrow-bounce" style={{ animationDelay: '0.2s' }}>▼</span>
+      </div>
+
+      {menuItems.map((item) => (
+        <button
+          key={item.id}
+          className={`menu-item ${item.cls}`}
+          onClick={() => onSelect(item.id)}
+        >
+          <div className="menu-item-inner">
+            <span className="menu-arrow-sel">▶</span>
+            <span className="menu-icon">{item.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div className="menu-label">{item.label}</div>
+              <div className="menu-desc">{item.desc}</div>
+            </div>
+            <span className="menu-shortcut">{item.shortcut}</span>
+          </div>
+        </button>
+      ))}
+
+      <div style={{ marginTop: 28, fontFamily: 'Press Start 2P', fontSize: 7, color: 'var(--text-dim)', opacity: 0.5, letterSpacing: 2 }}>
+        HOVER O TECLA [1-4] PARA SELECCIONAR
+      </div>
+    </div>
+  );
+}
+
+// =============================================
+// MAIN APP
+// =============================================
+function App() {
+  const [activeSection, setActiveSection] = useState(null);
+  const [userIP, setUserIP] = useState('loading...');
+
+  useEffect(() => {
+    getUserIP().then(setUserIP);
+  }, []);
+
+  const goBack = () => setActiveSection(null);
+
+  return (
+    <div>
+      <PixelStars />
+
+      {/* Header */}
+      <header className="header">
+        <div className="header-title">GENGIS AI</div>
+        <div className="header-sub">▶ THE EMPIRE OF ARTIFICIAL STUPIDITY ◀</div>
+        <div className="header-tagline">
+          <span style={{ color: 'var(--neon-lime)' }}>v0.666</span> · 
+          <span style={{ color: 'var(--neon-cyan)' }}> Powered by pixel magic</span> · 
+          <span style={{ color: 'var(--neon-pink)' }}> Not responsible for brain damage</span>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      {activeSection === null ? (
+        <MainMenu onSelect={setActiveSection} />
+      ) : (
+        <main className="app-container section-view" style={{ paddingBottom: 60, position: 'relative', zIndex: 1 }}>
+          <div className="section">
+            {/* Back button */}
+            <button className="back-btn" onClick={goBack}>
+              ◀ VOLVER AL MENÚ
+            </button>
+            {activeSection === 'casino' && <BlackjackSection userIP={userIP} />}
+            {activeSection === 'anime' && <AnimeSection userIP={userIP} />}
+            {activeSection === 'calendar' && <CalendarSection />}
+            {activeSection === 'iq' && <IQSection />}
+          </div>
+        </main>
+      )}
+
+      {/* Status Bar */}
+      <div className="status-bar">
+        <div><span className="status-dot" />GENGIS AI</div>
+        <div className="status-bar-mid" style={{ color: 'var(--neon-cyan)', fontSize: 7 }}>IP: {userIP}</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: 7 }}>
+          {new Date().toLocaleDateString('es-PE')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
