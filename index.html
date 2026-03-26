@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>GENGIS AI</title>
+<title>Gengis AI | made by claude</title>
+
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="apple-touch-icon" href="favicon.png" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="GENGIS AI - The Empire of Stupidity" />
+<meta property="og:description" content="Casino, Galería Anime, Test de IQ y mucho trolleo. Entra bajo tu propio riesgo." />
+<meta property="og:image" content="preview.png" />
+<meta property="og:url" content="https://tu-dominio-aqui.com/" />
+<meta name="twitter:card" content="summary_large_image" />
+
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -1137,7 +1148,7 @@ body::before {
 const { useState, useEffect, useRef, useCallback } = React;
 
 // =============================================
-// FIREBASE CONFIG Y CONEXIÓN REAL (SIN IMPORTS)
+// FIREBASE CONFIG Y CONEXIÓN REAL
 // =============================================
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB0BEHr3oE5UewazuQDzt6lulyv4tYxLR4",
@@ -1148,12 +1159,11 @@ const FIREBASE_CONFIG = {
   appId: "1:927608604426:web:358e6b5317d6b4536b9cf3"
 };
 
-// Inicializamos Firebase de forma global
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
 // =============================================
-// BASE DE DATOS REAL (Reemplaza al Mock falso)
+// BASE DE DATOS REAL
 // =============================================
 const mockDb = {
   async checkPlayedToday(ip) {
@@ -1167,31 +1177,57 @@ const mockDb = {
     const docRef = db.collection("plays").doc(`${ip}_${today}`);
     await docRef.set({ played: true, fecha: new Date() });
   },
-  async toggleLike(imageId, ip) {
-    const docRef = db.collection("likes").doc(`${imageId}_${ip}`);
-    const docSnap = await docRef.get();
-    let isLiked = false;
-    
-    if (docSnap.exists) {
-      isLiked = !docSnap.data().liked;
-    } else {
-      isLiked = true;
-    }
-    
-    await docRef.set({ liked: isLiked });
-    return isLiked;
+
+  // --- NUEVA LÓGICA ANIME INTEGRADA ---
+  async getAllPosts() {
+    const snap = await db.collection("anime_posts").orderBy("timestamp", "desc").get();
+    let postsArray = [];
+    snap.forEach(doc => {
+      postsArray.push(doc.data());
+    });
+    return postsArray;
   },
-  async isLiked(imageId, ip) {
-    const docRef = db.collection("likes").doc(`${imageId}_${ip}`);
-    const docSnap = await docRef.get();
-    return docSnap.exists ? docSnap.data().liked : false;
+  async uploadAnimePost(compressedDataUrl, ip, sizeKB) {
+    const postId = 'post_' + new Date().getTime();
+    const docRef = db.collection("anime_posts").doc(postId);
+    const newPostData = {
+      id: postId,
+      url: compressedDataUrl,
+      sizeKB: sizeKB,
+      uploaderIp: ip,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      likes: 0,
+      likedBy: []
+    };
+    await docRef.set(newPostData);
+    return newPostData;
+  },
+  async toggleLike(imageId, ip) {
+    const docRef = db.collection("anime_posts").doc(imageId);
+    await db.runTransaction(async (t) => {
+      const snap = await t.get(docRef);
+      if (!snap.exists) return;
+      const data = snap.data();
+      let likedBy = data.likedBy || [];
+      let likes = data.likes || 0;
+      
+      if (likedBy.includes(ip)) {
+        likedBy = likedBy.filter(x => x !== ip); // Quitar like
+        likes = Math.max(0, likes - 1);
+      } else {
+        likedBy.push(ip); // Dar like
+        likes++;
+      }
+      t.update(docRef, { likes, likedBy });
+    });
+  },
+  async deletePost(imageId) {
+    await db.collection("anime_posts").doc(imageId).delete();
   }
 };
 
-// (Deja tu función compressImage y getUserIP exactamente como estaban)
-
 // =============================================
-// IMAGE COMPRESSION (Se queda igual, funciona perfecto)
+// IMAGE COMPRESSION (Sin cambios, es perfecta)
 // =============================================
 async function compressImage(file, maxSizeKB = 200) {
   return new Promise((resolve) => {
@@ -1232,6 +1268,7 @@ async function compressImage(file, maxSizeKB = 200) {
     reader.readAsDataURL(file);
   });
 }
+
 // =============================================
 // IP FETCH
 // =============================================
@@ -1324,7 +1361,7 @@ function BlackjackSection({ userIP }) {
   const [deck, setDeck] = useState([]);
   const [playerHand, setPlayerHand] = useState([]);
   const [dealerHand, setDealerHand] = useState([]);
-  const [gameState, setGameState] = useState('idle'); // idle | playing | dealer | over
+  const [gameState, setGameState] = useState('idle');
   const [message, setMessage] = useState('');
   const [balance, setBalance] = useState(1000);
   const [bet, setBet] = useState(50);
@@ -1457,7 +1494,6 @@ function BlackjackSection({ userIP }) {
 
       {/* Table */}
       <div className="blackjack-table">
-        {/* Dealer */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <span className="pixel" style={{ fontSize: 9, color: 'var(--neon-lime)' }}>DEALER</span>
@@ -1474,7 +1510,6 @@ function BlackjackSection({ userIP }) {
 
         <div className="pixel-divider" />
 
-        {/* Player */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <span className="pixel" style={{ fontSize: 9, color: 'var(--neon-cyan)' }}>JUGADOR</span>
@@ -1512,12 +1547,10 @@ function BlackjackSection({ userIP }) {
         </div>
       </div>
 
-      {/* Rules */}
       <div style={{ marginTop: 16, fontSize: 10, color: 'var(--text-dim)', padding: '0 4px' }}>
         <span style={{ color: 'var(--neon-pink)' }}>⚠</span> SOLO 1 PARTIDA DIARIA GRATIS • Basado en IP • Casa siempre gana (o sea, nosotros)
       </div>
 
-      {/* Subscription Panel */}
       {showSub && (
         <div className={`subscription-panel ${subClosing ? 'closing' : ''}`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, position: 'relative' }}>
@@ -1550,7 +1583,6 @@ function BlackjackSection({ userIP }) {
         </div>
       )}
 
-      {/* Troll Modal */}
       {showTroll && (
         <div className="modal-overlay" onClick={() => setShowTroll(false)}>
           <div className="troll-modal" onClick={e => e.stopPropagation()}>
@@ -1569,7 +1601,7 @@ function BlackjackSection({ userIP }) {
               No existe forma de pagar. Todo es un chiste. Welcome to Gengis AI.
             </div>
             <button onClick={() => setShowTroll(false)} className="pixel-btn btn-lime" style={{ fontSize: 10 }}>
-              😭 OK ME TROLLEARON GG
+              Ah, okey...
             </button>
           </div>
         </div>
@@ -1578,11 +1610,10 @@ function BlackjackSection({ userIP }) {
   );
 }
 
-// helper
 function clamp(a, b) { return b; }
 
 // =============================================
-// TROLL CLOSE BUTTON — escapes cursor/tap
+// TROLL CLOSE BUTTON
 // =============================================
 function TrollCloseBtn({ onClose }) {
   const [escaped, setEscaped] = useState(false);
@@ -1594,7 +1625,6 @@ function TrollCloseBtn({ onClose }) {
     e.stopPropagation();
     const count = tryCount + 1;
     setTryCount(count);
-    // After 4 failed attempts, let them close it (troll complete)
     if (count >= 4) { onClose(); return; }
     const labels = ['¡NO!', '😈 NUNCA', '¡PAGA!', '🏃 BYE'];
     setLabel(labels[(count - 1) % labels.length]);
@@ -1620,22 +1650,23 @@ function TrollCloseBtn({ onClose }) {
 }
 
 // =============================================
-// ANIME SECTION
+// ANIME SECTION (AHORA 100% CONECTADA A FIREBASE)
 // =============================================
 function AnimeSection({ userIP }) {
-  const [images, setImages] = useState(() => {
-    const saved = localStorage.getItem('gengis_anime');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [images, setImages] = useState([]);
+  const [loadingInitial, setLoadingInitial] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [lastCompress, setLastCompress] = useState(null);
   const fileRef = useRef();
 
-  const saveImages = (imgs) => {
-    localStorage.setItem('gengis_anime', JSON.stringify(imgs));
-    setImages(imgs);
-  };
+  // Carga inicial desde Firebase
+  useEffect(() => {
+    mockDb.getAllPosts().then(posts => {
+      setImages(posts);
+      setLoadingInitial(false);
+    });
+  }, []);
 
   const processFile = async (file) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -1643,18 +1674,14 @@ function AnimeSection({ userIP }) {
     try {
       const { dataURL, sizeKB, originalKB, width, height } = await compressImage(file, 200);
       setLastCompress({ originalKB, sizeKB, width, height });
-      const newImg = {
-        id: Date.now().toString(),
-        url: dataURL,
-        name: file.name,
-        sizeKB,
-        originalKB,
-        likes: 0,
-        likedBy: [],
-        uploadedAt: new Date().toISOString(),
-      };
-      const updated = [newImg, ...images];
-      saveImages(updated);
+      
+      // Guardar en Firebase directamente
+      const newImg = await mockDb.uploadAnimePost(dataURL, userIP, sizeKB);
+      
+      // Actualizar la pantalla de inmediato sin recargar
+      setImages(prev => [newImg, ...prev]);
+    } catch (e) {
+      console.error("Error al subir:", e);
     } finally {
       setUploading(false);
     }
@@ -1668,21 +1695,27 @@ function AnimeSection({ userIP }) {
   };
 
   const toggleLike = async (id) => {
-    const updated = images.map(img => {
+    // Actualizamos la pantalla al instante (optimistic update)
+    setImages(prev => prev.map(img => {
       if (img.id !== id) return img;
       const likedBy = img.likedBy || [];
       const alreadyLiked = likedBy.includes(userIP);
       return {
         ...img,
-        likes: alreadyLiked ? img.likes - 1 : img.likes + 1,
+        likes: alreadyLiked ? Math.max(0, img.likes - 1) : img.likes + 1,
         likedBy: alreadyLiked ? likedBy.filter(x => x !== userIP) : [...likedBy, userIP],
       };
-    });
-    saveImages(updated);
+    }));
+    
+    // Lo guardamos en Firebase en segundo plano
+    await mockDb.toggleLike(id, userIP);
   };
 
-  const deleteImage = (id) => {
-    saveImages(images.filter(i => i.id !== id));
+  const deleteImage = async (id) => {
+    // Quita de la pantalla
+    setImages(prev => prev.filter(i => i.id !== id));
+    // Borra de Firebase
+    await mockDb.deletePost(id);
   };
 
   return (
@@ -1702,7 +1735,7 @@ function AnimeSection({ userIP }) {
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => processFile(e.target.files[0])} />
         <div className="upload-icon">{uploading ? '⚙️' : '📁'}</div>
         <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 8 }}>
-          {uploading ? 'COMPRIMIENDO...' : 'DRAG & DROP / CLICK'}
+          {uploading ? 'SUBIENDO A FIRESTORE...' : 'DRAG & DROP / CLICK'}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
           Sube tu waifu/husbando. Compresión automática a &lt;200KB via Canvas API
@@ -1717,7 +1750,11 @@ function AnimeSection({ userIP }) {
       </div>
 
       {/* Gallery */}
-      {images.length === 0 ? (
+      {loadingInitial ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--neon-cyan)' }}>
+          <div className="pixel" style={{ fontSize: 10 }}>CARGANDO GALERÍA<span className="loading-dots"></span></div>
+        </div>
+      ) : images.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🖼️</div>
           <div className="pixel" style={{ fontSize: 9 }}>GALERÍA VACÍA</div>
@@ -1729,17 +1766,18 @@ function AnimeSection({ userIP }) {
             const liked = (img.likedBy || []).includes(userIP);
             return (
               <div key={img.id} className="gallery-item fade-in">
-                <img src={img.url} alt={img.name} />
+                <img src={img.url} alt="Anime" />
                 <div className="like-btn" onClick={() => toggleLike(img.id)}>
                   <span style={{ animation: liked ? 'bounce-in 0.3s ease' : 'none' }}>{liked ? '❤️' : '🤍'}</span>
-                  <span>{img.likes}</span>
+                  <span>{img.likes || 0}</span>
                 </div>
+                {/* Botón de borrar (puedes quitarlo luego si no quieres que tus amigos borren fotos) */}
                 <button
                   onClick={() => deleteImage(img.id)}
                   style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.8)', border: '2px solid var(--neon-pink)', color: 'var(--neon-pink)', cursor: 'pointer', fontSize: 10, padding: '2px 6px', fontFamily: 'Press Start 2P' }}
                 >✕</button>
                 <div style={{ position: 'absolute', bottom: 6, left: 6, background: 'rgba(0,0,0,0.8)', border: '2px solid var(--neon-lime)', color: 'var(--neon-lime)', fontSize: 7, padding: '2px 5px', fontFamily: 'Press Start 2P' }}>
-                  {img.sizeKB}KB
+                  {img.sizeKB || '?'}KB
                 </div>
               </div>
             );
@@ -1791,7 +1829,6 @@ function CalendarSection() {
         <span>📅</span> CALENDARIO DEL CAOS
       </div>
 
-      {/* Month nav */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <button onClick={prevMonth} className="pixel-btn btn-purple" style={{ padding: '8px 16px', fontSize: 10 }}>◀</button>
         <div className="pixel" style={{ fontSize: clamp(11, 14), color: 'var(--neon-cyan)' }}>
@@ -1801,13 +1838,10 @@ function CalendarSection() {
       </div>
 
       <div className="pixel-card pixel-card-cyan">
-        {/* Headers */}
         <div className="calendar-grid">
           {DAYS_ES.map(d => (
             <div key={d} className="cal-header">{d}</div>
           ))}
-
-          {/* Days */}
           {cells.map((cell, i) => {
             const isToday = !cell.other && cell.day === today.getDate() && current.month === today.getMonth() && current.year === today.getFullYear();
             const event = !cell.other ? ABSURD_EVENTS[cell.day] : null;
@@ -1833,7 +1867,6 @@ function CalendarSection() {
         </div>
       </div>
 
-      {/* Legend */}
       <div style={{ marginTop: 16, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-dim)' }}>
           <div style={{ width: 8, height: 8, background: 'var(--neon-cyan)', border: '2px solid var(--neon-cyan)' }} />
@@ -1845,7 +1878,6 @@ function CalendarSection() {
         </div>
       </div>
 
-      {/* Upcoming */}
       <div style={{ marginTop: 20 }}>
         <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 12 }}>PRÓXIMOS EVENTOS:</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1892,7 +1924,6 @@ const IQ_QUESTIONS = [
   },
 ];
 
-// All "wrong" for the troll (correct answers: 1, 2, 2, 2, 1)
 const CORRECT = [1, 2, 2, 2, 1];
 
 function IQSection() {
@@ -1966,7 +1997,6 @@ function IQSection() {
         <span>🧠</span> TONTO-METER™ <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>// IQ Test Oficial de Gengis</span>
       </div>
 
-      {/* Progress */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span className="pixel" style={{ fontSize: 8, color: 'var(--text-dim)' }}>PREGUNTA {current + 1}/{IQ_QUESTIONS.length}</span>
@@ -1977,7 +2007,6 @@ function IQSection() {
         </div>
       </div>
 
-      {/* Question */}
       <div className="question-card" key={current}>
         <div className="pixel" style={{ fontSize: 10, color: 'var(--neon-purple)', marginBottom: 16, lineHeight: 1.8 }}>
           {q.q}
@@ -2050,7 +2079,6 @@ function MainMenu({ onSelect }) {
     },
   ];
 
-  // Keyboard nav
   useEffect(() => {
     const map = { '1': 'casino', '2': 'anime', '3': 'calendar', '4': 'iq' };
     const handler = (e) => { if (map[e.key]) onSelect(map[e.key]); };
@@ -2108,7 +2136,6 @@ function App() {
     <div>
       <PixelStars />
 
-      {/* Header */}
       <header className="header">
         <div className="header-title">GENGIS AI</div>
         <div className="header-sub">▶ THE EMPIRE OF ARTIFICIAL STUPIDITY ◀</div>
@@ -2119,13 +2146,11 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       {activeSection === null ? (
         <MainMenu onSelect={setActiveSection} />
       ) : (
         <main className="app-container section-view" style={{ paddingBottom: 60, position: 'relative', zIndex: 1 }}>
           <div className="section">
-            {/* Back button */}
             <button className="back-btn" onClick={goBack}>
               ◀ VOLVER AL MENÚ
             </button>
@@ -2137,7 +2162,6 @@ function App() {
         </main>
       )}
 
-      {/* Status Bar */}
       <div className="status-bar">
         <div><span className="status-dot" />GENGIS AI</div>
         <div className="status-bar-mid" style={{ color: 'var(--neon-cyan)', fontSize: 7 }}>IP: {userIP}</div>
